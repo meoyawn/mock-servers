@@ -2,3 +2,4 @@
 .task/
 .moon/cache/
 *.test
+youtube-web-mock/fixtures/

@@ -9,8 +9,18 @@ tasks:
       go mod download
     options:
       cache: true
-  test:
+  generate-fixtures:
+    description: Encode the synthetic media corpus into the Git-ignored fixtures directory.
     deps: [~:mod-download]
+    inputs: ['cmd/youtube-web-mock-generate/**/*.go', go.mod, go.sum]
+    outputs: ['fixtures/**/*']
+    script: |-
+      set -euo pipefail
+      go run ./cmd/youtube-web-mock-generate --output fixtures
+    options:
+      cache: true
+  test:
+    deps: [~:mod-download, ~:generate-fixtures]
     inputs: ['**/*.go', go.mod, go.sum]
     script: |-
       set -euo pipefail

@@ -1,5 +1,6 @@
-// Command youtube-web-mock-generate explicitly regenerates the deliberately
-// small YouTube-media corpus used by the integrated E2E environment.
+// Command youtube-web-mock-generate encodes the mock's synthetic media corpus:
+// YouTube stream topologies under <output>/youtube and single-file source
+// videos in <output>. Everything comes from FFmpeg lavfi sources.
 package main
 
 import (
@@ -50,7 +51,7 @@ type fixtureRecord struct {
 func main() {
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer stop()
-	output := flag.String("output", "", "fixture output directory")
+	output := flag.String("output", "", "corpus output directory")
 	flag.Parse()
 	if *output == "" {
 		fatal(errors.New("--output is required"))
@@ -58,46 +59,52 @@ func main() {
 	if err := os.RemoveAll(*output); err != nil {
 		fatal(fmt.Errorf("clear fixture output: %w", err))
 	}
-	if err := os.MkdirAll(*output, fixtureDirectoryMode); err != nil {
+	topologies := filepath.Join(*output, "youtube")
+	if err := os.MkdirAll(topologies, fixtureDirectoryMode); err != nil {
 		fatal(err)
 	}
-	version, err := exec.CommandContext(ctx, "ffmpeg", "-version").Output()
-	if err != nil {
-		fatal(fmt.Errorf("read ffmpeg version: %w", err))
+	if err := generateSources(ctx, *output); err != nil {
+		fatal(err)
 	}
+	// Encode from inside the topology directory so the manifest records arguments
+	// and probe file names relative to the corpus, not to the caller's checkout.
+	if err := os.Chdir(topologies); err != nil {
+		fatal(err)
+	}
+	if err := generateTopologies(ctx, "."); err != nil {
+		fatal(err)
+	}
+}
+
+func generateTopologies(ctx context.Context, output string) error {
+	banner, err := exec.CommandContext(ctx, "ffmpeg", "-version").Output()
+	if err != nil {
+		return fmt.Errorf("read ffmpeg version: %w", err)
+	}
+	firstLine, _, _ := strings.Cut(string(banner), "\n")
+	version, _, _ := strings.Cut(firstLine, " Copyright")
 	commands := make(map[string][]string)
-	if err := generateNativeHLS(ctx, *output, commands); err != nil {
-		fatal(err)
+	for _, generate := range []func(context.Context, string, map[string][]string) error{
+		generateNativeHLS, generateDASHRanges, generateFallback, generateOpus,
+	} {
+		if err := generate(ctx, output, commands); err != nil {
+			return err
+		}
 	}
-	if err := generateDASHRanges(ctx, *output, commands); err != nil {
-		fatal(err)
-	}
-	if err := generateFallback(ctx, *output, commands); err != nil {
-		fatal(err)
-	}
-	if err := generateOpus(ctx, *output, commands); err != nil {
-		fatal(err)
-	}
-	records, err := recordsFor(ctx, *output, commands)
+	records, err := recordsFor(ctx, output, commands)
 	if err != nil {
-		fatal(err)
+		return err
 	}
 	encoded, err := json.MarshalIndent(
-		manifest{FFmpegVersion: strings.TrimSpace(string(version)), Fixtures: records},
+		manifest{FFmpegVersion: strings.TrimSpace(version), Fixtures: records},
 		"",
 		"  ",
 	)
 	if err != nil {
-		fatal(err)
+		return err
 	}
 	// Public provider media fixtures and their manifest contain no credentials.
-	if err := os.WriteFile(
-		filepath.Join(*output, "manifest.json"),
-		append(encoded, '\n'),
-		fixtureFileMode,
-	); err != nil {
-		fatal(err)
-	}
+	return os.WriteFile(filepath.Join(output, "manifest.json"), append(encoded, '\n'), fixtureFileMode)
 }
 
 func generateNativeHLS(ctx context.Context, output string, commands map[string][]string) error {
@@ -109,9 +116,9 @@ func generateNativeHLS(ctx context.Context, output string, commands map[string][
 		playlist := filepath.Join(directory, "index.m3u8")
 		arguments := append(
 			lavfiArguments(rendition.size),
-			"-map",
+			mapFlag,
 			"0:v:0",
-			"-map",
+			mapFlag,
 			"1:a:0",
 			"-c:v",
 			"libx264",
@@ -184,9 +191,9 @@ func generateDASHRanges(ctx context.Context, output string, commands map[string]
 		manifestPath := filepath.Join(directory, "manifest.mpd")
 		arguments := append(
 			lavfiArguments(rendition.size),
-			"-map",
+			mapFlag,
 			"0:v:0",
-			"-map",
+			mapFlag,
 			"1:a:0",
 			"-c:v",
 			"libx264",
@@ -236,9 +243,9 @@ func generateFallback(ctx context.Context, output string, commands map[string][]
 		}
 		arguments := append(
 			lavfiArguments(rendition.size),
-			"-map",
+			mapFlag,
 			"0:v:0",
-			"-map",
+			mapFlag,
 			"1:a:0",
 			"-c:v",
 			"libx264",
@@ -279,7 +286,7 @@ func generateOpus(ctx context.Context, output string, commands map[string][]stri
 		return err
 	}
 	arguments := []string{
-		"-hide_banner", "-loglevel", "error", "-y", "-f", lavfiFormat,
+		"-f", lavfiFormat,
 		"-i", "sine=frequency=1000:sample_rate=48000", "-t", durationSeconds,
 		"-c:a", "libopus", "-b:a", "128k", "-ac", "2", "-fflags", "+bitexact", path,
 	}
@@ -292,10 +299,6 @@ func generateOpus(ctx context.Context, output string, commands map[string][]stri
 
 func lavfiArguments(size string) []string {
 	return []string{
-		"-hide_banner",
-		"-loglevel",
-		"error",
-		"-y",
 		"-f",
 		lavfiFormat,
 		"-i",
@@ -310,6 +313,7 @@ func lavfiArguments(size string) []string {
 }
 
 func runFFmpeg(ctx context.Context, arguments []string) error {
+	arguments = append([]string{"-hide_banner", "-loglevel", "error", "-y"}, arguments...)
 	output, err := exec.CommandContext(ctx, "ffmpeg", arguments...).CombinedOutput()
 	if err != nil {
 		return fmt.Errorf("%w: %s", err, strings.TrimSpace(string(output)))

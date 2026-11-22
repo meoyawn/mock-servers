@@ -28,8 +28,9 @@ Module READMEs describe each contract and its test-control endpoints.
 
 ## Development
 
-[Mise](https://mise.jdx.dev/) pins Go, [ShellCheck](https://www.shellcheck.net/),
-and [Moon](https://moonrepo.dev/); golangci-lint is a Go tool in each module.
+[Mise](https://mise.jdx.dev/) pins Go, [FFmpeg](https://ffmpeg.org/),
+[ShellCheck](https://www.shellcheck.net/), and [Moon](https://moonrepo.dev/);
+golangci-lint is a Go tool in each module.
 
 ```sh
 mise install --locked
@@ -38,7 +39,8 @@ moon run turnstile-mock:check
 ```
 
 All modules share [`.golangci.yaml`](.golangci.yaml). Fixtures are synthetic:
-never commit real account data, credentials, or captured traffic.
+never commit real account data, credentials, or captured traffic. Media is
+generated, never committed: see [`youtube-web-mock`](youtube-web-mock/).
 
 ## License
 

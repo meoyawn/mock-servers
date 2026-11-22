@@ -5,6 +5,9 @@ projects:
   turnstile-mock: turnstile-mock
   youtube-data-api-v3: youtube-data-api-v3
   youtube-web-mock: youtube-web-mock
+# Share the generated media corpus cache across Git worktrees.
+cache:
+  unstable_sharedWorktreeCache: true
 versionConstraint: ">=2.5.4 <3.0.0"
 vcs:
   client: git

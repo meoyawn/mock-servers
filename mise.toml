@@ -1,4 +1,6 @@
 [tools]
 go = "1.27.4"
+# The YouTube web mock probes its media with ffprobe; its generator encodes with ffmpeg.
+ffmpeg = { version = "9.0.2", os = ["linux", "macos"] }
 shellcheck = "0.11.0"
 "aqua:moonrepo/moon" = "2.5.6"
