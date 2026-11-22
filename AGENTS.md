@@ -10,7 +10,8 @@
   rely on sleeps or polling.
 - Never commit credentials, captured traffic, or real account data. Fixtures
   and identifiers stay synthetic.
-- `.golangci.yaml` and `.moon/tasks/go-lint.yml` are synced from the consuming
-  monorepo's shared policy; change them there, not here.
+- `.golangci.yaml` is synced from the consuming monorepo's shared policy;
+  change it there, not here. Tooling is Go and Moon only: keep tasks in Bash
+  and Go, with no Node.js or other runtimes in `mise.toml`.
 - Before handing off, run `moon run <project>:check` for every affected module,
   or `moon run :check` after shared config changes.
