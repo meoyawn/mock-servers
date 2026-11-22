@@ -1,0 +1,15 @@
+env:
+  GOCACHE: ${HOME}/.cache/go-build
+  GOLANGCI_LINT_CACHE: ${HOME}/.cache/golangci-lint
+taskOptions:
+  cache: false
+  unixShell: bash
+  outputStyle: stream
+implicitInputs:
+  - /.golangci.yaml
+  - /go.work
+  - /mise.toml
+  - /mise.lock
+  - /.moon/**/*.yml
+  - moon.yml
+  - /.github/workflows/ci.yaml

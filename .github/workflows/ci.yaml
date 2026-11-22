@@ -1,0 +1,53 @@
+name: CI
+
+on:
+  push:
+    branches:
+      - master
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  check:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+          filter: blob:none
+      - uses: jdx/mise-action@v5
+        with:
+          version: '2026.11.7'
+      - name: Restore Go modules, compiler, and linter caches
+        id: go-cache
+        uses: actions/cache@v6
+        with:
+          path: |
+            ~/go/pkg/mod
+            ~/.cache/go-build
+            ~/.cache/golangci-lint
+          key: go-v3-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('mise.lock', 'go.work', '**/go.mod', '**/go.sum') }}-${{ github.sha }}
+          restore-keys: |
+            go-v3-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('mise.lock', 'go.work', '**/go.mod', '**/go.sum') }}-
+      - name: Check affected tasks
+        id: ci
+        run: moon ci
+      - name: Report Moon CI results
+        if: "!cancelled() && steps.ci.outcome != 'skipped'"
+        uses: moonrepo/run-report-action@v1
+        with:
+          access-token: ${{ secrets.GITHUB_TOKEN }}
+          skip-comment: true
+      - name: Upload Moon reports
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: moon-reports-${{ github.run_attempt }}
+          path: |
+            .moon/cache/ciReport.json
+            .moon/cache/runReport.json
+          if-no-files-found: ignore
+          include-hidden-files: true
+          retention-days: 14

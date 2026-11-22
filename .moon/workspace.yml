@@ -1,0 +1,17 @@
+projects:
+  cloudflare-cache: cloudflare-cache
+  google-oauth-mock: google-oauth-mock
+  stripe-mock: stripe-mock
+  turnstile-mock: turnstile-mock
+  youtube-data-api-v3: youtube-data-api-v3
+  youtube-web-mock: youtube-web-mock
+versionConstraint: ">=2.5.4 <3.0.0"
+vcs:
+  client: git
+  defaultBranch: master
+pipeline:
+  installDependencies: false
+  syncProjects: false
+  syncWorkspace: false
+hasher:
+  walkStrategy: glob

@@ -1,0 +1,29 @@
+tags: [go-lint, mock-server]
+toolchains:
+  default: system
+tasks:
+  mod-download:
+    inputs: [go.mod, go.sum]
+    script: |-
+      set -euo pipefail
+      go mod download
+    options:
+      cache: true
+  test:
+    deps: [~:mod-download]
+    inputs: ['**/*.go', go.mod, go.sum, youtube.yaml]
+    script: |-
+      set -euo pipefail
+      go test ./...
+    options:
+      cache: true
+  lint:
+    deps: [~:mod-download]
+    inputs: ['**/*.go', go.mod, go.sum]
+    options:
+      cache: true
+  check:
+    deps: [~:test, ~:lint]
+    inputs: []
+    options:
+      runInCI: false
