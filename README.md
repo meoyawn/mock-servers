@@ -28,8 +28,8 @@ Module READMEs describe each contract and its test-control endpoints.
 
 ## Development
 
-[Mise](https://mise.jdx.dev/) pins Go, Node.js, and
-[Moon](https://moonrepo.dev/); golangci-lint is a Go tool in each module.
+[Mise](https://mise.jdx.dev/) pins Go, [ShellCheck](https://www.shellcheck.net/),
+and [Moon](https://moonrepo.dev/); golangci-lint is a Go tool in each module.
 
 ```sh
 mise install --locked
