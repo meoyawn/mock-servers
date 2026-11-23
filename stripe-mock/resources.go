@@ -51,6 +51,7 @@ type customer struct {
 	Email           string                       `json:"email"`
 	Metadata        object                       `json:"metadata"`
 	Balance         int64                        `json:"balance"`
+	Currency        *string                      `json:"currency"`
 	Livemode        bool                         `json:"livemode"`
 	DefaultSource   any                          `json:"default_source"`
 	InvoiceSettings invoiceSettings              `json:"invoice_settings"`

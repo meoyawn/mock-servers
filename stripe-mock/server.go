@@ -325,9 +325,14 @@ func (s *Server) customerResource(r *http.Request) (any, error) {
 
 func (s *Server) balanceTransaction(c *customer, f url.Values) (object, error) {
 	amount, err := strconv.ParseInt(f.Get("amount"), 10, 64)
-	if err != nil || f.Get("currency") == "" {
+	currency := f.Get("currency")
+	if err != nil || currency == "" {
 		return nil, requestError("Balance transaction requires amount and currency")
 	}
+	if c.Currency != nil && *c.Currency != currency {
+		return nil, requestError("Balance transaction currency must match the customer's currency")
+	}
+	c.Currency = &currency
 	c.Balance += amount
 	return object{
 		"id": s.id(
@@ -506,11 +511,15 @@ func (s *Server) createSubscription(
 		behavior == "error_if_incomplete" {
 		return nil, requestError("Subscription requires a payment method or sufficient credit")
 	}
+	if c.Currency != nil && *c.Currency != p.Currency {
+		return nil, requestError("Subscription currency must match the customer's currency")
+	}
 	status := subscriptionActive
 	if outstanding > 0 && c.InvoiceSettings.PaymentMethod == nil {
 		status = "incomplete"
 	} else {
 		c.Balance = min(int64(0), outstanding)
+		c.Currency = &p.Currency
 	}
 	sub := &subscription{
 		ID:       s.id("sub"),
