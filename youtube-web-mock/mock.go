@@ -103,6 +103,7 @@ type Server struct {
 	rateLimitedVideos       map[string]bool
 	nativeRateLimited       map[string]bool
 	liveOfflineVideos       map[string]bool
+	postLiveVideos          map[string]bool
 	fixturePlayers          map[string]map[string]any
 	cloneIdentifierPlayer   bool
 	playerScript            string
@@ -162,6 +163,7 @@ func Start(ctx context.Context, config Config) (*Server, error) {
 	mock.rateLimitedVideos = make(map[string]bool)
 	mock.nativeRateLimited = make(map[string]bool)
 	mock.liveOfflineVideos = make(map[string]bool)
+	mock.postLiveVideos = make(map[string]bool)
 	mock.fixturePlayers = make(map[string]map[string]any)
 	go func() { _ = mock.server.Serve(listener) }()
 	return mock, nil
@@ -505,12 +507,16 @@ func (server *Server) rawPlayerResponse(videoID string) map[string]any {
 	fixturePlayer := server.fixturePlayers[videoID]
 	rateLimited := server.rateLimitedVideos[videoID]
 	liveOffline := server.liveOfflineVideos[videoID]
+	postLive := server.postLiveVideos[videoID]
 	server.mu.Unlock()
 	if rateLimited {
 		return rateLimitedPlayerResponse()
 	}
 	if liveOffline {
 		return liveOfflinePlayerResponse(videoID)
+	}
+	if postLive {
+		return postLivePlayerResponse(videoID)
 	}
 	if fixturePlayer != nil {
 		return fixturePlayer
@@ -924,6 +930,10 @@ func (server *Server) serveMedia(writer io.Writer, request *http.Request) {
 	info, err := file.Stat()
 	if err != nil || info.Size() <= 0 {
 		writeProxyResponse(writer, http.StatusInternalServerError, "invalid media fixture")
+		return
+	}
+	if isPostLiveMedia(request) {
+		server.servePostLiveMedia(writer, request, file)
 		return
 	}
 	server.serveMediaContent(writer, request, file, name, context, info.Size())

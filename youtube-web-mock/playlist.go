@@ -61,6 +61,9 @@ type PlaylistVideo struct {
 	RateLimited       bool `json:"rate_limited,omitempty"`
 	NativeRateLimited bool `json:"native_rate_limited,omitempty"`
 	LiveOffline       bool `json:"live_offline,omitempty"`
+	// PostLive answers like a stream that ended moments ago, before YouTube
+	// processed its VOD: segmented media without a known byte length.
+	PostLive bool `json:"post_live,omitempty"`
 }
 
 type videoDates struct {
@@ -134,7 +137,7 @@ func (server *Server) configurePlaylist(writer http.ResponseWriter, request *htt
 			server.playerDisconnects[video.ID] = video.PlayerDisconnect
 			server.rateLimitedVideos[video.ID] = video.RateLimited
 			server.nativeRateLimited[video.ID] = video.NativeRateLimited
-			server.liveOfflineVideos[video.ID] = video.LiveOffline
+			server.configureLiveState(video)
 		}
 	}
 	server.mu.Unlock()
